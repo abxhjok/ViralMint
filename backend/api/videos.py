@@ -2,6 +2,7 @@
 # Copyright (c) 2025-2026 ViralMint Contributors
 """REST endpoints for generated videos."""
 import json
+import logging
 from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import FileResponse
@@ -12,6 +13,7 @@ from backend.database import get_db
 from backend.models.generated_video import GeneratedVideo
 from backend.core.exceptions import safe_json_loads as _safe_json
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
@@ -30,6 +32,33 @@ async def list_videos(
 
     result = await db.execute(query)
     videos = result.scalars().all()
+
+    # Self-heal: prune rows whose rendered file is gone. Only rows that HAD a
+    # file (video_path set) but it's now missing on disk — a draft/failed row
+    # with no path yet is legitimately file-less and left alone. Local is_file()
+    # is authoritative so this is safe; it stops broken/dead tiles from
+    # lingering in the Library forever. Committed before the count below so
+    # `total` reflects the pruned set.
+    live = []
+    pruned = 0
+    for v in videos:
+        if v.video_path and not Path(v.video_path).is_file():
+            try:
+                for ps in (v.video_path, v.audio_path, v.thumbnail_path, v.video_path_landscape):
+                    if ps:
+                        pp = Path(ps)
+                        if pp.exists():
+                            pp.unlink(missing_ok=True)
+                await db.delete(v)
+                pruned += 1
+                continue
+            except Exception:
+                logger.warning("Could not prune orphaned video row %s", v.id)
+        live.append(v)
+    if pruned:
+        await db.commit()
+        logger.info("Videos: pruned %d orphaned row(s) with missing files", pruned)
+    videos = live
 
     from sqlalchemy import func
     count_query = select(func.count(GeneratedVideo.id))

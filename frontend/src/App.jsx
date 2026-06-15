@@ -14,6 +14,28 @@ const StockVideo = lazy(() => import("./pages/StockVideo"))
 const Channels = lazy(() => import("./pages/Channels"))
 const Messaging = lazy(() => import("./pages/Messaging"))
 const ClipStudio = lazy(() => import("./pages/ClipStudio"))
+const Tools = lazy(() => import("./pages/Tools"))
+
+// Tools — single-purpose utility pages. Each is a thin wrapper around the
+// shared ToolRunner; lazy-loaded so the bundle for the hub stays small.
+const ToolCaptions = lazy(() => import("./pages/tools/Captions"))
+const ToolReframe = lazy(() => import("./pages/tools/Reframe"))
+const ToolAudioEnhance = lazy(() => import("./pages/tools/AudioEnhance"))
+const ToolWatermark = lazy(() => import("./pages/tools/Watermark"))
+const ToolRemoveSilence = lazy(() => import("./pages/tools/RemoveSilence"))
+const ToolMergeClips = lazy(() => import("./pages/tools/MergeClips"))
+const ToolGif = lazy(() => import("./pages/tools/Gif"))
+const ToolSpeed = lazy(() => import("./pages/tools/Speed"))
+const ToolTrim = lazy(() => import("./pages/tools/Trim"))
+const ToolSubtitles = lazy(() => import("./pages/tools/Subtitles"))
+const ToolAutoZoom = lazy(() => import("./pages/tools/AutoZoom"))
+const ToolTransform = lazy(() => import("./pages/tools/Transform"))
+const ToolMusicVisualizer = lazy(() => import("./pages/tools/MusicVisualizer"))
+const ToolVoiceover = lazy(() => import("./pages/tools/Voiceover"))
+const ToolHookAnalysis = lazy(() => import("./pages/tools/HookAnalysis"))
+const ToolTranslate = lazy(() => import("./pages/tools/Translate"))
+const ToolMetadata = lazy(() => import("./pages/tools/Metadata"))
+const ToolAutoChapters = lazy(() => import("./pages/tools/AutoChapters"))
 
 const LazyFallback = () => (
   <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100%", minHeight: 200 }}>
@@ -71,6 +93,25 @@ export default function App() {
               <Route path="create" element={<Navigate to="/stock" />} />
               <Route path="cron" element={<Navigate to="/" />} />
               <Route path="clips" element={<ClipStudio />} />
+              <Route path="tools" element={<Tools />} />
+              <Route path="tools/captions" element={<ToolCaptions />} />
+              <Route path="tools/reframe" element={<ToolReframe />} />
+              <Route path="tools/audio-enhance" element={<ToolAudioEnhance />} />
+              <Route path="tools/watermark" element={<ToolWatermark />} />
+              <Route path="tools/remove-silence" element={<ToolRemoveSilence />} />
+              <Route path="tools/merge-clips" element={<ToolMergeClips />} />
+              <Route path="tools/gif" element={<ToolGif />} />
+              <Route path="tools/speed" element={<ToolSpeed />} />
+              <Route path="tools/trim" element={<ToolTrim />} />
+              <Route path="tools/subtitles" element={<ToolSubtitles />} />
+              <Route path="tools/auto-zoom" element={<ToolAutoZoom />} />
+              <Route path="tools/transform" element={<ToolTransform />} />
+              <Route path="tools/music-visualizer" element={<ToolMusicVisualizer />} />
+              <Route path="tools/voiceover" element={<ToolVoiceover />} />
+              <Route path="tools/hook-analysis" element={<ToolHookAnalysis />} />
+              <Route path="tools/translate" element={<ToolTranslate />} />
+              <Route path="tools/metadata" element={<ToolMetadata />} />
+              <Route path="tools/auto-chapters" element={<ToolAutoChapters />} />
               <Route path="channels" element={<Channels />} />
               <Route path="messaging" element={<Messaging />} />
               <Route path="settings" element={<Settings />} />

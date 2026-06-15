@@ -26,7 +26,7 @@ try:
         _PIL_Image.NEAREST = _PIL_Image.Resampling.NEAREST
 except Exception:
     pass
-from backend.api import captions, channels, chat, chat_sessions, config as config_router, downloaded, generate, jobs, media, messaging as messaging_router, news, scout, settings as settings_router, templates, videos
+from backend.api import captions, channels, chat, chat_sessions, config as config_router, downloaded, generate, jobs, media, messaging as messaging_router, news, scout, settings as settings_router, templates, tools, videos
 
 # Initialize logging before anything else
 setup_logging(debug=settings.DEBUG)
@@ -152,6 +152,7 @@ def create_app() -> FastAPI:
     app.include_router(generate.router, prefix="/api")
     app.include_router(templates.router, prefix="/api")
     app.include_router(captions.router, prefix="/api")
+    app.include_router(tools.router, prefix="/api")
     app.include_router(messaging_router.router, prefix="/api")
 
     # Load proprietary overlay (no-op if not installed) and register plugin routers.

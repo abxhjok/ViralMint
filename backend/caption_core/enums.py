@@ -29,6 +29,8 @@ class CaptionAnimationType(str, Enum):
     """
 
     FADE = "fade"
+    SCALE = "scale"
+    SPRING = "spring"
     BOUNCE = "bounce"
     SLIDE = "slide"
     ZOOM = "zoom"

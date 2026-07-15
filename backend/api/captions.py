@@ -250,3 +250,62 @@ async def generate_caption_style(body: AIGenerateRequest):
         await db.refresh(style)
 
     return _style_to_dict(style)
+
+
+# ── Animated caption preview (Phase 3) ───────────────────────────────────────
+
+from backend.caption_core.animation.preview import (
+    MAX_PREVIEW_FRAMES,
+    MAX_PREVIEW_WORDS,
+    PreviewRequest,
+    evaluate_preview_batch,
+    _preview_cache,
+)
+
+
+@router.get("/captions/preview/presets")
+async def list_preview_presets():
+    """Return the Phase 2 animation preset IDs available for preview."""
+    return {
+        "presets": [
+            {"id": "bounce", "name": "Bounce"},
+            {"id": "explosive", "name": "Explosive"},
+            {"id": "glitch", "name": "Glitch"},
+            {"id": "typewriter", "name": "Typewriter"},
+            {"id": "karaoke", "name": "Karaoke"},
+        ],
+    }
+
+
+@router.post("/captions/preview")
+async def preview_caption_animation(body: PreviewRequest):
+    """Return deterministic visual-state frames for a caption/preset/fps/range.
+
+    The response is a list of frames, each containing the per-word visual state.
+    No animation math is duplicated in the frontend; all values come from the
+    Phase 2 ``evaluate_caption_word_state`` evaluator.
+    """
+    if not body.words:
+        raise HTTPException(422, "words cannot be empty")
+    if len(body.words) > MAX_PREVIEW_WORDS:
+        raise HTTPException(422, f"Maximum {MAX_PREVIEW_WORDS} words allowed")
+    try:
+        frames = evaluate_preview_batch(body)
+    except ValueError as e:
+        raise HTTPException(422, str(e)) from e
+    return {
+        "preset_id": body.preset_id,
+        "fps": body.fps,
+        "start_frame": body.start_frame,
+        "end_frame": body.end_frame,
+        "frame_step": body.frame_step,
+        "frame_count": len(frames),
+        "frames": frames,
+    }
+
+
+@router.post("/captions/preview/invalidate-cache")
+async def invalidate_preview_cache():
+    """Clear the in-process preview cache. Useful during development/tests."""
+    _preview_cache.invalidate()
+    return {"ok": True}

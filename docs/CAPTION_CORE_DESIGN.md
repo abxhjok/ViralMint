@@ -281,6 +281,141 @@ presets via configuration only:
 - `Typewriter` — character reveal by active word.
 - `Karaoke` — highlight progress mapped to word duration.
 
+## Phase 3: Animated caption preview
+
+### Preview transport architecture
+
+The frontend does not run animation formulas. Instead, it requests a short,
+pre-computed frame-state timeline from the backend and renders it:
+
+```
+frontend AnimatedCaptionPreview
+  -> useCaptionPreview
+  -> POST /api/captions/preview
+  -> backend PreviewRequest validation
+  -> evaluate_preview_batch
+  -> evaluate_caption_word_state per word, per frame
+  -> JSON array of frames, each with per-word CaptionVisualState
+  -> frontend maps state to CSS (opacity, transform, filter, text-shadow, etc.)
+```
+
+This keeps the canonical evaluator as the single source of truth for all
+animation math.
+
+### Batch evaluation
+
+`backend/caption_core/animation/preview.py` provides `evaluate_preview_batch`.
+It accepts a `PreviewRequest` (`words`, `preset_id`, `fps`, `start_frame`,
+`end_frame`, `frame_step`) and returns every requested frame. To keep requests
+small and responsive:
+
+- Maximum 180 frames per preview.
+- Maximum 6,000ms preview duration.
+- Maximum 50 words per preview.
+- Optional `frame_step` lets the client trade smoothness for payload size
+  (preset cards use `frame_step=2`).
+
+Batch results are verified against direct `evaluate_caption_word_state` calls
+in `tests/caption_core/animation/test_preview.py`.
+
+### Preview API contract
+
+`POST /api/captions/preview` returns:
+
+```json
+{
+  "preset_id": "bounce",
+  "fps": 30,
+  "start_frame": 0,
+  "end_frame": 72,
+  "frame_step": 1,
+  "frame_count": 73,
+  "frames": [
+    {
+      "frame": 0,
+      "time_ms": 0,
+      "words": [
+        {
+          "text": "Create",
+          "word_index": 0,
+          "active": true,
+          "opacity": 1.0,
+          "scale": 1.0,
+          "translate_x": 0.0,
+          "translate_y": 0.0,
+          "rotation": 0.0,
+          "blur": 0.0,
+          "glow": 0.0,
+          "letter_spacing": 0.0,
+          "highlight_progress": 0.0,
+          "reveal_progress": 0.0
+        }
+      ]
+    }
+  ]
+}
+```
+
+`GET /api/captions/preview/presets` lists the five Phase 2 presets.
+`POST /api/captions/preview/invalidate-cache` clears the process-local cache.
+
+### Frontend renderer mapping
+
+`frontend/src/components/captions/AnimatedCaptionPreview.jsx` maps each
+backend state field to browser presentation:
+
+| state field | CSS / DOM mapping |
+|-------------|-------------------|
+| `opacity` | `style.opacity` |
+| `scale`, `translate_*`, `rotation` | `transform: translate(...) scale(...) rotate(...)` |
+| `blur` | `filter: blur(...)` |
+| `glow` | `text-shadow: 0 0 ${glow}px currentColor` |
+| `letter_spacing` | `letterSpacing` |
+| `reveal_progress` | `visibleText(text, reveal_progress)` slices Unicode grapheme clusters |
+| `highlight_progress` | overlay span clipped to `progress * 100%` width |
+
+No spring, bounce, glitch, typewriter, or karaoke math is performed in JS.
+
+### Video-time-to-frame conversion
+
+The current preview is standalone (sample caption) and not tied to a loaded
+`<video>`. When integrated with a video element in the future, the rule is:
+
+```
+frame = round(currentTime * fps)
+```
+
+The frame is always derived from `video.currentTime` on each `timeupdate` or
+`requestAnimationFrame` tick, not by incrementing a fake counter. This avoids
+cumulative drift. The same `frame` and `fps` always resolve to the same
+`current_time_ms` on the backend.
+
+### Preview cache
+
+`PreviewCache` in `backend/caption_core/animation/preview.py` is an in-process,
+bounded LRU with TTL:
+
+- Key = SHA-256 of the serialized preview request (words, preset, fps, frame
+  range, frame step).
+- `maxsize` = 128 entries.
+- `ttl_seconds` = 300.
+- Invalidation is implicit because any input change produces a new key; the
+  `invalidate` endpoint clears all entries.
+
+### Known preview limitations
+
+- The preview uses a short sample caption in the `ToolCaptions` page; real clip
+  transcripts are not yet wired in (that requires clip-local timing + transcript
+  storage on generated clips, which is out of Phase 3 scope).
+- Video playback scrubbing is not yet implemented because the preview is not
+  currently attached to a video element. The deterministic frame-state evaluator
+  supports it; only the player glue is missing.
+- Preset cards intentionally use `frame_step=2` and a 1.6s duration to keep
+  payloads small and avoid per-card full-FFmpeg rendering.
+- The front-end `Intl.Segmenter` is the preferred grapheme splitter; the
+  fallback `Array.from(text)` splits by code point, which is safe but not
+  cluster-perfect for complex combining marks.
+
 ## ASS integration status
 
 The existing `caption_service.py` ASS renderer is unchanged. The animation

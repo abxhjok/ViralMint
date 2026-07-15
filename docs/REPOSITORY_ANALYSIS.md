@@ -105,6 +105,16 @@ Key SQLAlchemy models observed:
 - `burn_captions()` invokes FFmpeg `ass=` filter.
 - ASS output supports `insert_emojis_into_words()` with `none`, `moderate`, `aggressive` modes.
 
+##### Caption Core (`backend/caption_core/`)
+
+Phase 1 added a deterministic, validated caption timing layer underneath the
+ASS pipeline. It provides `CaptionWord`, `CaptionSegment`, `CaptionStyle`,
+`CaptionAnimation`, and `CaptionPreset` models, source/clip-local timing helpers,
+active-word lookup, and deterministic segmentation. The existing ASS renderer is
+consumed through a small bridge in `backend/caption_core/ass_bridge.py` that
+converts core structures into the legacy segment/style dictionaries expected by
+`caption_service.generate_captions_ass()`. See `docs/CAPTION_CORE_DESIGN.md`.
+
 #### FFmpeg Service (`backend/services/ffmpeg_service.py`)
 
 - `extract_clip()` cuts a source video between start/end and reframes to 9:16 with blur-fill for landscape input using an FFmpeg filter graph:

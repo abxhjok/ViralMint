@@ -354,6 +354,7 @@ async def generate_captions_ass(
     aspect_ratio: str = "9:16",
     output_path: Path = None,
     emoji_style: str = "moderate",
+    style_config: dict | None = None,
 ) -> Path:
     """
     Generate ASS subtitle file with word-by-word animation.
@@ -365,6 +366,8 @@ async def generate_captions_ass(
         aspect_ratio: "9:16" or "16:9".
         output_path: Where to write the ASS file.
         emoji_style: "none" | "minimal" | "moderate" | "heavy"
+        style_config: Optional override dict matching CAPTION_STYLES shape.
+            When provided, it takes precedence over the ``style`` name lookup.
 
     Returns:
         Path to the generated ASS file.
@@ -373,7 +376,12 @@ async def generate_captions_ass(
         output_path = settings.TMP_DIR / "captions.ass"
     output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    style_config = CAPTION_STYLES.get(style) or await _load_custom_style(style) or CAPTION_STYLES["viral"]
+    style_config = (
+        style_config
+        or CAPTION_STYLES.get(style)
+        or await _load_custom_style(style)
+        or CAPTION_STYLES["viral"]
+    )
 
     if aspect_ratio == "9:16":
         resolution = (1080, 1920)
